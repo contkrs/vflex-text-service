@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2
+      maxSurge: 2
+  selector:
+    matchLabels:
+      #Must match Service Selector
+      app: {{ .Values.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}
+    spec:
+      containers:
+        - name: {{ .Values.name }}
+          image: {{ .Values.image_repo }}:{{ .Values.image_tag }}
+          securityContext:
+            privileged: false
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          ports:
+            - containerPort: {{ .Values.port.container }}
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500"
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.health_url }}
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.health_url }}
+              port: 8080
+          env:
+            - name: AWS_KEY_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: special-config
+                  key: SPECIAL_LEVEL

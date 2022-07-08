@@ -1,0 +1,11 @@
+# Override values for hello-k8s.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Release-wide Values
+name: hello-k8s
+env: qa
+replicas: 1
+namespace: phlp-qa-pds-sample-app
+cluster_name: pds-blueprint-control-plane
+ingress_hostname: pds-qa-flask.ocp-int.aws-dev.capgroup.com

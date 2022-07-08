@@ -1,0 +1,55 @@
+version: 0.2
+env:
+  variables:
+    PIPELINE_REGION: "us-east-1"
+    CLUSTER_REGION: "us-west-2"
+    TARGET_AWS_ACCOUNT_ID: "039422518223"
+    PIPELINE_ACCOUNT_NUMBER: 410997643304
+    #eks cluster role
+    EKS_CLUSTER_ROLE: "arn:aws:iam::039422518223:role/StandardPipelineRole"
+phases:
+  install:
+    commands:
+      - echo Starting Install Phase
+      - pip install yq jq
+      #Retrive CI/Build artifact which contains helm chart location and version to deploy 
+      - cat $CODEBUILD_SRC_DIR_BuildArtifact/imagedefinitions.json
+      - HELM_CHART_NAME=$(jq -r .helm_chart_name $CODEBUILD_SRC_DIR_BuildArtifact/imagedefinitions.json)
+      - HELM_CHART_REPO=$(jq -r .helm_chart_repo $CODEBUILD_SRC_DIR_BuildArtifact/imagedefinitions.json)
+      - HELM_CHART_VERSION=$(jq -r .helmChartVersion $CODEBUILD_SRC_DIR_BuildArtifact/imagedefinitions.json)
+      ## Install Helm CLI 
+      - echo Installing Helm
+      - curl https://cgrepo.capgroup.com/repository/cgfiles/helm/helm-v3.7.2-linux-amd64.tar.gz --create-dirs --output ${TOOLS_DIR}/helm/helm.tar.gz
+      - tar -xzf ${TOOLS_DIR}/helm/helm.tar.gz --strip 1 -C /usr/local/bin/ && ls -al /usr/local/bin
+      - chmod +x /usr/local/bin/helm && helm version
+      ## Configure helm environment variable to pull down helm charts
+      - export HELM_EXPERIMENTAL_OCI=1
+      ## Log into ECR repository hosting helm charts
+      - aws ecr get-login-password --region $PIPELINE_REGION | helm registry login --username AWS --password-stdin $PIPELINE_ACCOUNT_NUMBER.dkr.ecr.$PIPELINE_REGION.amazonaws.com
+  pre_build:
+    commands:
+  build:
+    commands:
+      #Retrieve cluster name from helm chart environment yaml
+      - CLUSTER_NAME=$(yq -r .cluster_name helm-charts/dev.yml)
+      - echo $CLUSTER_NAME
+      #Assume role into Banzai Deploy Role. This role needs to be granted access to EKS Cluster. 
+      - temp_role=$(aws sts assume-role --role-arn $EKS_CLUSTER_ROLE --role-session-name eks-session)
+      - export AWS_ACCESS_KEY_ID=$(echo $temp_role | jq -r .Credentials.AccessKeyId)
+      - export AWS_SECRET_ACCESS_KEY=$(echo $temp_role | jq -r .Credentials.SecretAccessKey)
+      - export AWS_SESSION_TOKEN=$(echo $temp_role | jq -r .Credentials.SessionToken)
+      - export AWS_REGION=$CLUSTER_REGION
+      ## Authenticate to EKS Cluster 
+      - aws eks update-kubeconfig --name $CLUSTER_NAME --region $CLUSTER_REGION
+    
+      ## Pull down helm charts
+      - NAMESPACE=$(yq -r .namespace helm-charts/dev.yml)
+      - helm pull oci://$HELM_CHART_REPO --version $HELM_CHART_VERSION
+      - ls -lrt
+      #Deploy helm chart to dev cluster 
+      - echo "helm upgrade --install --atomic $HELM_CHART_NAME ./$HELM_CHART_NAME-$HELM_CHART_VERSION.tgz -f helm-charts/dev.yml --create-namespace -n $NAMESPACE"
+      - helm upgrade --install --atomic $HELM_CHART_NAME ./$HELM_CHART_NAME-$HELM_CHART_VERSION.tgz -f helm-charts/dev.yml --create-namespace -n $NAMESPACE
+
+  post_build:
+    commands:
+      - echo Deploy completed on `date`+

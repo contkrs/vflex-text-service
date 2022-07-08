@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: special-config
+  namespace: {{ .Values.namespace }}
+data:
+  SPECIAL_LEVEL: very
+  SPECIAL_TYPE: charm
+  phone1: iphone4
+  phone2: iphone11
+  demo: oct-30

@@ -1,0 +1,10 @@
+# Override values for hello-k8s.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Release-wide Values
+name: hello-k8s
+env: dev
+replicas: 4
+namespace: phlp-hello
+

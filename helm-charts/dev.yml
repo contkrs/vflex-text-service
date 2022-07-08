@@ -1,0 +1,12 @@
+# Override values for hello-k8s.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Release-wide Values
+name: vflex-test-service
+env: dev
+replicas: 1
+namespace: vflex-test-service
+cluster_name: dev01-service-control-plane
+ingress_hostname: pds-sample-flask.ocp-int.aws-dev.capgroup.com
+

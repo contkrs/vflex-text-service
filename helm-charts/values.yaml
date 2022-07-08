@@ -1,0 +1,12 @@
+name: vflex-test-service
+replicas: 1
+
+image_repo: 410997643304.dkr.ecr.us-east-1.amazonaws.com/aa00002412-vflex-test-service-repo
+image_tag: latest
+port:
+  service: 80
+  container: 8080
+
+ingress_hostname: pds-sample-flask.ocp-int.aws-dev.capgroup.com
+
+health_url: /health
